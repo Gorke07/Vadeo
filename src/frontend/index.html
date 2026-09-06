@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vadeo</title><!-- yüklenmeden önceki varsayılan; uygulama rotaya göre değiştirir -->
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Vadeo" />
+    <!-- Tarayıcı çubuğu zeminle aynı renkte olsun; iki tema için ayrı. -->
+    <meta name="theme-color" content="#0d1219" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <style>
+      /* ============================================================
+         Vadeo — mürekkep zemin, üç durumlu renk sistemi.
+         Zaman ana eksen: her yükümlülük "ne zaman" ile başlar.
+         ============================================================ */
+      :root {
+        color-scheme: dark;
+        --bg: #0d1219;
+        --surface: #141b24;
+        --rule: #1f2a36;
+        --fg: #e6ecf3;
+        --dim: #7d8b9c;
+        /* Metin mürekkepleri — WCAG 4.5:1 üstü, üçü birbirinden ΔE>=18 ayrık.
+           Grafik işaretleri ayrı: farklı iş, farklı eşik (dataviz doğrulayıcısı). */
+        --in: #23aa8a;   /* girecek para        6.43:1 */
+        --due: #f9bf60;  /* planlı yükümlülük  11.32:1 */
+        --late: #d15c53; /* yalnızca gecikmiş   4.80:1 */
+        --mark-in: #16a384;
+        --mark-due: #b7810f;
+        --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+        --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      /* Işık teması iki yerde tanımlı: biri sistem tercihi için, biri kullanıcının
+         Ayarlar'dan seçtiği tema için. CSS bir blok takma adı vermiyor. */
+      @media (prefers-color-scheme: light) {
+        :root:not([data-theme="dark"]) {
+          color-scheme: light;
+          --bg: #fbfaf7; --surface: #fff; --rule: #e4e2da;
+          --fg: #14181e; --dim: #5f6a76;
+          --in: #0a5e4b; --due: #ab5819; --late: #6b1e1b;
+          --mark-in: #0da081; --mark-due: #b47d06;
+        }
+      }
+      :root[data-theme="light"] {
+          color-scheme: light;
+          --bg: #fbfaf7; --surface: #fff; --rule: #e4e2da;
+          --fg: #14181e; --dim: #5f6a76;
+          --in: #0a5e4b; --due: #ab5819; --late: #6b1e1b;
+          --mark-in: #0da081; --mark-due: #b47d06;
+      }
+
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0; background: var(--bg); color: var(--fg);
+        font: 15px/1.55 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+      /* ---------- kabuk: sol ray + gövde ---------- */
+      .shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; position: relative; }
+      /* Ray yapışkan ve 100vh; sütunun tamamı boyalı kalsın diye zemini kabuk çiziyor. */
+      .shell::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 236px;
+        background: var(--surface); border-right: 1px solid var(--rule); }
+      .view { padding: 44px 44px 96px; max-width: 940px; }
+
+      /* Ray 100vh sabit; menü büyüdükçe içerik taşmasın diye kendi içinde kayar. */
+      .rail { position: sticky; top: 0; align-self: start; height: 100vh; z-index: 1;
+        display: flex; flex-direction: column; padding: 32px 0 22px;
+        overflow-y: auto; scrollbar-width: thin; }
+      .rail .mark { font: 400 29px/1 var(--serif); letter-spacing: .01em; color: var(--fg);
+        background: none; border: 0; padding: 0 24px 30px; text-align: left; cursor: pointer; }
+      .rail .mark:hover { color: var(--fg); border: 0; }
+
+      .rail nav { display: flex; flex-direction: column; }
+      .rail nav button { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        width: 100%; text-align: left; font: 500 14px/1.3 var(--sans); color: var(--dim);
+        padding: 10px 24px; border: 0; border-left: 2px solid transparent; border-radius: 0; }
+      .rail nav button:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 4%, transparent); }
+      .rail nav button.on { color: var(--fg); border-left-color: var(--due);
+        background: color-mix(in srgb, var(--fg) 6%, transparent); }
+      .rail nav em { font-style: normal; font-size: 12px; color: var(--dim); }
+      .rail nav em.urgent { color: var(--due); font-weight: 600; }
+      .rail nav button.on em { color: var(--fg); }
+
+      .rail-foot { margin-top: auto; padding: 20px 24px 0; border-top: 1px solid var(--rule);
+        display: grid; gap: 2px; font-size: 12px; color: var(--dim); }
+      .rail-foot b { font: 400 21px/1.2 var(--serif); color: var(--fg); }
+      .rail-foot time { margin-top: 8px; }
+
+      /* ---------- hero: tek soru, tek cevap ---------- */
+      .hero { margin-bottom: 44px; }
+      .hero > p { margin: 0; font-size: 13px; color: var(--dim); }
+      .net { display: block; margin: 2px 0 6px -3px; color: var(--fg);
+        font: 400 clamp(54px, 11vw, 86px)/.98 var(--serif); letter-spacing: -.015em; }
+      .hero .caption { max-width: 44ch; line-height: 1.55; color: var(--fg); font-size: 14px; }
+      .hero .caption b { font-weight: 600; color: var(--due); }
+      .hero .caption b.late { color: var(--late); }
+
+      /* ---------- dört bileşen ---------- */
+      .parts { display: grid; gap: 1px 28px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        margin: 34px 0 0; padding: 0; list-style: none; }
+      .parts li { padding-left: 13px; border-left: 2px solid var(--rule); }
+      .parts li.in { border-left-color: var(--in); }
+      .parts li.due { border-left-color: var(--due); }
+      .parts b { display: block; font: 400 24px/1.2 var(--serif); letter-spacing: 0; }
+      .parts span { display: block; font-size: 12px; color: var(--dim); }
+
+      /* ---------- grafikler (TanStack Charts) ---------- */
+      .chart { margin: 30px 0 0; }
+      .chart .peak { font-size: 12px; color: var(--dim); margin: 0 0 12px; }
+      .chart .peak b { color: var(--fg); font-weight: 600; }
+      /* Kütüphane SVG'yi kendi ölçer; kabuk sadece genişliği verir. */
+      .chart svg { display: block; width: 100%; overflow: visible; }
+
+      /* ---------- bölümler ---------- */
+      section:not(:first-child) { margin-top: 56px; }
+      section > h2 { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--dim); letter-spacing: .01em; }
+      .entries { border-top: 1px solid var(--rule); }
+
+      .entry { display: grid; align-items: center; gap: 4px 20px; padding: 15px 0;
+        border-bottom: 1px solid var(--rule);
+        grid-template-columns: 86px minmax(0, 1fr) auto; grid-template-areas: "when what amount" ". acts acts"; }
+      .entry:hover { background: color-mix(in srgb, var(--fg) 3%, transparent);
+        box-shadow: 0 0 0 14px color-mix(in srgb, var(--fg) 3%, transparent); }
+
+      .when { grid-area: when; text-align: right; font-size: 13px; color: var(--dim); line-height: 1.25; }
+      .when b { display: block; font-weight: 600; font-size: 15px; color: var(--fg); }
+      .when.late b, .when.late { color: var(--late); }
+      .when.soon b { color: var(--due); }
+      .when.settled b { color: var(--dim); font-weight: 400; }
+
+      .what { grid-area: what; min-width: 0; }
+      .what b { font-weight: 600; }
+      .what p { margin: 1px 0 0; font-size: 12.5px; color: var(--dim); }
+
+      .amount { grid-area: amount; font-size: 17px; font-weight: 600; text-align: right; white-space: nowrap; }
+      .amount.in { color: var(--in); }
+      .amount.due { color: var(--due); }
+      .amount.late { color: var(--late); }
+      .amount.settled { color: var(--dim); font-weight: 400; text-decoration: line-through; }
+      .amount .per { font-size: 12px; font-weight: 400; color: var(--dim); margin-left: 2px; }
+
+      .acts { grid-area: acts; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 9px; }
+      /* satir ici yeni ekstre formu */
+      .restate { flex: 1 0 100%; display: grid; gap: 12px 18px; align-items: end; margin-top: 4px;
+        padding: 15px 0 6px; border-top: 1px dashed var(--rule);
+        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); }
+
+      /* kredi ilerlemesi */
+      .meter { display: flex; gap: 2px; margin-top: 7px; }
+      .meter i { height: 4px; flex: 1; border-radius: 1px; background: var(--rule); }
+      .meter i.paid { background: color-mix(in srgb, var(--due) 55%, transparent); }
+
+      /* ---------- kontroller ---------- */
+      /* Sessiz varsayilan; satir basina yalnizca bir cerceveli eylem. */
+      button { font: 500 13px/1 var(--sans); cursor: pointer; padding: 7px 1px; border: 0;
+        background: transparent; color: var(--dim); border-bottom: 1px solid transparent; border-radius: 0; }
+      button:hover:not(:disabled) { color: var(--fg); border-bottom-color: currentColor; }
+      button:disabled { opacity: .35; cursor: not-allowed; }
+      button.go, button.get { padding: 7px 13px; border: 1px solid; border-radius: 5px; }
+      button.go { border-color: color-mix(in srgb, var(--due) 50%, transparent); color: var(--due); }
+      button.go:hover:not(:disabled) { background: color-mix(in srgb, var(--due) 13%, transparent); border-color: var(--due); }
+      button.get { border-color: color-mix(in srgb, var(--in) 50%, transparent); color: var(--in); }
+      button.get:hover:not(:disabled) { background: color-mix(in srgb, var(--in) 13%, transparent); border-color: var(--in); }
+      button.drop:hover:not(:disabled) { color: var(--late); }
+      button.link { padding: 0; font: inherit; color: var(--fg); border-bottom: 1px solid transparent; }
+      button.link:hover { border-bottom-color: var(--rule); }
+      :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+      /* ---------- form ---------- */
+      details { border-bottom: 1px solid var(--rule); }
+      summary { padding: 14px 0; cursor: pointer; font-size: 13px; color: var(--dim); list-style: none; }
+      summary::-webkit-details-marker { display: none; }
+      summary::before { content: "+"; display: inline-block; width: 15px; color: var(--fg); }
+      summary:hover { color: var(--fg); }
+      details[open] summary::before { content: "−"; }
+      form { display: grid; gap: 14px 18px; padding: 4px 0 22px;
+        grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); align-items: end; }
+      label { display: grid; gap: 5px; font-size: 12px; color: var(--dim); }
+      input, select { font: 14px/1.3 var(--sans); padding: 9px 0; width: 100%; color: var(--fg);
+        background: transparent; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; }
+      input:focus, select:focus { outline: 0; border-bottom-color: var(--fg); }
+      select { padding-right: 4px; }
+      option { background: var(--surface); color: var(--fg); }
+      form button.go { padding: 9px 17px; }
+
+      /* ---------- durum ---------- */
+      .blank { padding: 22px 0; color: var(--dim); font-size: 13.5px; border-bottom: 1px solid var(--rule); }
+      .alert { margin: 20px 0 0; padding: 12px 14px; border-radius: 5px; font-size: 13px; color: var(--late);
+        background: color-mix(in srgb, var(--late) 10%, transparent);
+        border: 1px solid color-mix(in srgb, var(--late) 35%, transparent); }
+      .ledger { list-style: none; margin: 0; padding: 0; }
+      .ledger li { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0;
+        border-bottom: 1px solid var(--rule); font-size: 13px; color: var(--dim); }
+      .ledger li b { font-weight: 500; color: var(--fg); }
+      .ledger .tail { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+      .flag.due { color: var(--due); }
+      .flag.late { color: var(--late); font-weight: 600; }
+      /* ---------- aylık ödeme listesi ---------- */
+      .monthbar { display: flex; align-items: center; gap: 4px; margin: 0 0 20px; }
+      .monthbar b { font: 400 21px/1 var(--serif); min-width: 9.5em; text-align: center; }
+      .monthbar button { padding: 6px 10px; font-size: 17px; line-height: 1; color: var(--dim); }
+      .monthbar button.today { font-size: 13px; margin-left: 12px; }
+
+      .tally { margin: 0 0 8px; }
+      .tally .bar { height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+      .tally .bar i { display: block; height: 100%; background: var(--in); transition: width .25s ease; }
+      .tally p { margin: 9px 0 0; font-size: 13px; color: var(--dim); }
+      .tally b { color: var(--fg); font-weight: 600; }
+
+      ul.checklist { list-style: none; margin: 18px 0 0; padding: 0; border-top: 1px solid var(--rule); }
+      ul.checklist li { border-bottom: 1px solid var(--rule); }
+      ul.checklist label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center; gap: 14px; padding: 13px 2px; cursor: pointer; }
+      ul.checklist input { width: 17px; height: 17px; margin: 0; accent-color: var(--in); flex: none; cursor: pointer; }
+      ul.checklist .body { display: grid; gap: 1px; min-width: 0; }
+      ul.checklist .body b { font-size: 14.5px; font-weight: 600; }
+      ul.checklist .body em { font-style: normal; font-size: 12.5px; color: var(--dim); }
+      ul.checklist .sum { font-size: 15px; font-weight: 600; color: var(--due); white-space: nowrap; }
+      ul.checklist li.late .sum { color: var(--late); }
+      ul.checklist li.late .body em { color: var(--late); }
+      ul.checklist li.done .body b { color: var(--dim); text-decoration: line-through; }
+      ul.checklist li.done .sum { color: var(--dim); font-weight: 400; }
+      ul.checklist li:hover { background: color-mix(in srgb, var(--fg) 3%, transparent); }
+
+      .period { margin-bottom: 26px; }
+      .period-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+        padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+      .period-head b { font: 400 18px/1 var(--serif); }
+      .period-head span { font-size: 13px; color: var(--dim); }
+
+      /* ---------- ayarlar ---------- */
+      h3.sub { margin: 34px 0 4px; font-size: 13px; font-weight: 600; color: var(--fg); }
+      h3.sub:first-of-type { margin-top: 22px; }
+      .hint { margin: 0 0 14px; font-size: 12.5px; color: var(--dim); max-width: 62ch; line-height: 1.55; }
+      form.settings { display: grid; gap: 16px 20px; padding: 4px 0 6px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: end; }
+      form.settings.triggers { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); align-items: start; }
+      form.settings.triggers button { grid-column: 1 / -1; justify-self: start; margin-top: 8px; }
+      label.check { display: flex; gap: 10px; align-items: start; cursor: pointer; color: var(--fg); }
+      label.check input { width: auto; margin: 3px 0 0; accent-color: var(--due); flex: none; }
+      label.check span { display: grid; gap: 2px; }
+      label.check b { font-size: 13.5px; font-weight: 600; }
+      label.check em { font-style: normal; font-size: 12px; color: var(--dim); line-height: 1.45; }
+
+      .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin: 6px 0 16px; }
+      .tools .dl { font: 500 13px/1 var(--sans); color: var(--dim); text-decoration: none;
+        border-bottom: 1px solid transparent; padding-bottom: 3px; }
+      .tools .dl:hover { color: var(--fg); border-bottom-color: currentColor; }
+      .tools .upload { cursor: pointer; }
+      .tools .upload input { display: none; }
+
+      .segmented { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; margin: 2px 0 6px; }
+      .segmented button { padding: 8px 16px; border: 0; border-right: 1px solid var(--rule); border-radius: 0; }
+      .segmented button:last-child { border-right: 0; }
+      .segmented button.on { background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg); }
+      .segmented button:hover:not(:disabled) { border-bottom-color: transparent; color: var(--fg); }
+
+      form.settings.lists { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); align-items: start; }
+      form.settings.lists button { grid-column: 1 / -1; justify-self: start; }
+      textarea { font: 13px/1.6 var(--sans); padding: 9px 10px; width: 100%; color: var(--fg);
+        background: transparent; border: 1px solid var(--rule); border-radius: 5px; resize: vertical; }
+      textarea:focus { outline: 0; border-color: var(--fg); }
+      label .count { color: var(--dim); font-variant-numeric: tabular-nums; }
+
+      .lock { display: grid; gap: 16px; justify-items: start; max-width: 15em; padding-top: 6vh; }
+      .lock input { font: 24px/1 var(--sans); letter-spacing: .5em; padding: 10px 0; text-align: center; }
+      .lock button { padding: 9px 22px; }
+      .lock .alert { margin: 0; }
+
+      .boot { max-width: 46ch; display: grid; gap: 14px; justify-items: start; padding-top: 8px; }
+      .boot .alert { margin: 0; }
+      .boot .hint { margin: 0; }
+
+      .preview { margin: 14px 0 0; padding: 14px 16px; border: 1px solid var(--rule); border-radius: 6px;
+        background: var(--surface); color: var(--dim); cursor: pointer;
+        font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; max-width: 62ch; }
+
+      .ok { margin: 20px 0 0; padding: 12px 14px; border-radius: 5px; font-size: 13px; color: var(--in);
+        background: color-mix(in srgb, var(--in) 10%, transparent);
+        border: 1px solid color-mix(in srgb, var(--in) 35%, transparent); }
+
+      @media (max-width: 880px) {
+        /* minmax(0,·): rayın yatay kayan içeriği sütunu genişletmesin. */
+        .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+        .shell::before { display: none; }
+        .rail { position: static; height: auto; flex-direction: row; align-items: center; gap: 4px;
+          background: var(--surface); border-bottom: 1px solid var(--rule); padding: 0 12px;
+          overflow-x: auto; scrollbar-width: none; }
+        .rail::-webkit-scrollbar { display: none; }
+        .rail .mark { font-size: 22px; padding: 14px 12px 14px 4px; }
+        .rail nav { flex-direction: row; }
+        .rail nav button { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; padding: 16px 12px; }
+        .rail nav button.on { border-left: 0; border-bottom-color: var(--due); background: none; }
+        .rail-foot { display: none; }
+        .view { padding: 26px 18px 72px; }
+      }
+      @media (max-width: 560px) {
+        .entry { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "what amount" "when when" "acts acts"; }
+        .when { text-align: left; }
+        .when b { display: inline; font-size: 13px; margin-right: 4px; }
+        .scale span { font-size: 9px; }
+        /* 12 sütun dar ekrana sığsın: bar genişliği kırpılıyor. */
+        .track i { width: 9px; }
+        .track .mo { gap: 2px; }
+      }
+      @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.js"></script>
+  </body>
+</html>

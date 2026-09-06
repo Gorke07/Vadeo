@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0d1219"/>
+  <!-- Maskelenebilir alan: içerik ortadaki %80'de kalıyor ki köşeler kırpılınca kesilmesin. -->
+  <text x="256" y="366" text-anchor="middle" font-size="300"
+        font-family="Instrument Serif, Georgia, 'Times New Roman', serif" fill="#f9bf60">&#8378;</text>
+</svg>

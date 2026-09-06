@@ -1,0 +1,18 @@
+# Bağımlılıklar ve derleme çıktısı — ikisi de komutla yeniden üretilir
+node_modules/
+public/
+
+# Veritabanı. Yoksa uygulama açılışta oluşturur; asla depoya girmemeli.
+# VADEO_DB ile başka bir ad verilse de yakalansın diye genel kalıp.
+db.sqlite*
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Sırlar
+.env
+
+# Araç artıkları
+.playwright-mcp/
+*.png
+!src/frontend/assets/*.png
