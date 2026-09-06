@@ -272,6 +272,15 @@
       textarea:focus { outline: 0; border-color: var(--fg); }
       label .count { color: var(--dim); font-variant-numeric: tabular-nums; }
 
+      /* tarih alanı: metin + takvim düğmesi, gizli yerleşik seçici */
+      .tarih { position: relative; display: block; }
+      .tarih input[data-date] { padding-right: 26px; }
+      .tarih .takvim { position: absolute; right: 0; bottom: 6px; padding: 2px; color: var(--dim);
+        border: 0; background: none; line-height: 0; }
+      .tarih .takvim:hover { color: var(--fg); border: 0; }
+      .tarih .gizli-secici { position: absolute; right: 4px; bottom: 0; width: 1px; height: 1px;
+        padding: 0; border: 0; opacity: 0; pointer-events: none; }
+
       .lock { display: grid; gap: 16px; justify-items: start; max-width: 15em; padding-top: 6vh; }
       .lock input { font: 24px/1 var(--sans); letter-spacing: .5em; padding: 10px 0; text-align: center; }
       .lock button { padding: 9px 22px; }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { areaY, barY, colorLegend, defineChart, lineY } from "@tanstack/charts";
 import { Chart } from "@tanstack/charts/react";
 import { group } from "@tanstack/charts/group";
@@ -232,15 +232,57 @@ function Entry(props: {
   );
 }
 
-/* Tarih girdileri gg.aa.yyyy alır. <input type="date"> tarayıcının arayüz diline
-   göre biçimlendiği için İngilizce arayüzde aa/gg/yyyy gösteriyordu. */
-const TARIH_ALANI = {
-  type: "text" as const,
-  inputMode: "numeric" as const,
-  placeholder: "gg.aa.yyyy",
-  maxLength: 10,
-  "data-date": "",
-};
+/**
+ * Tarih alanı: gg.aa.yyyy metin girdisi + takvim düğmesi.
+ *
+ * Metin girdisi, biçim tarayıcının arayüz diline bağlı kalmasın diye.
+ * Yanındaki gizli <input type="date"> yalnızca yerleşik seçiciyi açmak için var;
+ * adı olmadığı için forma dahil olmaz, seçilen tarih metin alanına yazılır.
+ */
+function DateInput({ name, value, required, autoFocus }: {
+  name: string;
+  value?: string | null;
+  required?: boolean;
+  autoFocus?: boolean;
+}) {
+  const metin = useRef<HTMLInputElement>(null);
+  const secici = useRef<HTMLInputElement>(null);
+
+  const aktar = (e: React.FormEvent<HTMLInputElement>) => {
+    const iso = e.currentTarget.value;
+    if (iso) metin.current!.value = trDate(iso);
+  };
+
+  return (
+    <span className="tarih">
+      <input
+        ref={metin} name={name} data-date="" type="text" inputMode="numeric"
+        placeholder="gg.aa.yyyy" maxLength={10} required={required} autoFocus={autoFocus}
+        defaultValue={value ? trDate(String(value)) : ""} onInput={bicimlendirTarih}
+      />
+      <button
+        type="button" className="takvim" tabIndex={-1} aria-label="Takvimden seç"
+        onClick={() => {
+          const s = secici.current!;
+          // Seçici, alanda yazan tarihin üzerinde açılsın.
+          s.value = parseTrDate(metin.current!.value) ?? "";
+          if (s.showPicker) s.showPicker(); else s.click();
+        }}
+      >
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+          <rect x="1.7" y="3" width="12.6" height="11.3" rx="1.6" />
+          <path d="M1.7 6.6h12.6M5 1.7v2.6M11 1.7v2.6" />
+        </svg>
+      </button>
+      <input
+        ref={secici} type="date" className="gizli-secici" tabIndex={-1} aria-hidden="true"
+        // Tarayıcılar seçimden sonra input ve change olaylarını farklı sırayla verir;
+        // ikisini de dinleyip metin alanına yazıyoruz.
+        onInput={aktar} onChange={aktar}
+      />
+    </span>
+  );
+}
 
 /** Yazarken noktaları kendisi koyar; silmeyi engellemez. */
 function bicimlendirTarih(e: React.FormEvent<HTMLInputElement>) {
@@ -284,8 +326,7 @@ function InlineForm({ fields, onSubmit, busy, submit, onInput }: {
             </select>
           ) : (
             f.type === "date" ? (
-              <input name={f.name} {...TARIH_ALANI} list={f.list} autoFocus={i === 0}
-                onInput={bicimlendirTarih} defaultValue={f.value ? trDate(String(f.value)) : ""} />
+              <DateInput name={f.name} value={f.value as string | null} autoFocus={i === 0} />
             ) : (
               <input name={f.name} type={f.type ?? "text"} step={f.step} min={f.min} list={f.list}
                 autoFocus={i === 0} defaultValue={f.value ?? ""} />
@@ -582,7 +623,7 @@ export default function App() {
             </select>
           </label>
           <label>Tutar<input name="amount" type="number" step="0.01" min="0.01" required placeholder="1500" /></label>
-          <label>Vade<input name="due_date" {...TARIH_ALANI} onInput={bicimlendirTarih} /></label>
+          <label>Vade<DateInput name="due_date" /></label>
           <button className="go" disabled={busy}>Kaydet</button>
         </form>
       </details>
@@ -660,7 +701,7 @@ export default function App() {
           <label>Kart<input name="name" list="oneri-kart" required maxLength={120} placeholder="Bonus" /></label>
           <label>Dönem borcu<input name="statement_amount" type="number" step="0.01" min="0" required placeholder="8400" /></label>
           <label>Asgari<input name="minimum_amount" type="number" step="0.01" min="0" required placeholder="1680" /></label>
-          <label>Son ödeme<input name="due_date" {...TARIH_ALANI} onInput={bicimlendirTarih} /></label>
+          <label>Son ödeme<DateInput name="due_date" /></label>
           <button className="go" disabled={busy}>Kaydet</button>
         </form>
       </details>
@@ -714,7 +755,7 @@ export default function App() {
           <label>Taksit<input name="installment_amount" type="number" step="0.01" min="0.01" required placeholder="3250" /></label>
           <label>Toplam taksit<input name="total_installments" type="number" min="1" max="1000" required placeholder="12" /></label>
           <label>Ödenen<input name="paid_installments" type="number" min="0" defaultValue={0} /></label>
-          <label>Sıradaki vade<input name="next_due_date" {...TARIH_ALANI} onInput={bicimlendirTarih} /></label>
+          <label>Sıradaki vade<DateInput name="next_due_date" /></label>
           <button className="go" disabled={busy}>Kaydet</button>
         </form>
       </details>
@@ -778,8 +819,8 @@ export default function App() {
         <form onSubmit={submit("/api/expenses")}>
           <label>Gider<input name="name" list="oneri-gider" required maxLength={120} placeholder="Kira" /></label>
           <label>Aylık tutar<input name="amount" type="number" step="0.01" min="0.01" required placeholder="24000" /></label>
-          <label>İlk ödeme<input name="next_due_date" {...TARIH_ALANI} required onInput={bicimlendirTarih} /></label>
-          <label>Sözleşme bitişi<input name="renews_on" {...TARIH_ALANI} onInput={bicimlendirTarih} /></label>
+          <label>İlk ödeme<DateInput name="next_due_date" required /></label>
+          <label>Sözleşme bitişi<DateInput name="renews_on" /></label>
           <button className="go" disabled={busy}>Kaydet</button>
         </form>
       </details>
