@@ -22,6 +22,25 @@ yeniden derler. Üretim için `bun start`.
 
 Veritabanı yoksa ilk açılışta oluşturulur; depoya girmez.
 
+### Docker
+
+Sürekli ayakta kalması için:
+
+```sh
+docker compose up -d          # http://localhost:2340
+```
+
+Makine açıldığında kendiliğinden gelir, çökerse yeniden başlar. Veritabanı
+host'taki `./data/` dizininde yaşar; container silinse de kalır. Sağlık kontrolü
+takılan süreci yakalar.
+
+Port yalnızca `127.0.0.1`'e bağlıdır — dışarıdan erişilmez. Telefondan kullanmak
+istersen `compose.yml`'de `"2340:2340"` yap, **ama önce Ayarlar'dan PIN kur**.
+2340 doluysa `VADEO_PORT=2341 docker compose up -d`.
+
+`./data` yerel diskte olmalı: SQLite'ın WAL kipi ağ dosya sisteminde (NFS/SMB)
+bozulur.
+
 ## Ortam değişkenleri
 
 Hiçbiri zorunlu değil. Proje kökündeki `.env` dosyasını Bun kendisi okur.

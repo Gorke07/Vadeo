@@ -1,0 +1,19 @@
+services:
+  vadeo:
+    build: .
+    # Makine açıldığında kendiliğinden gelir; çökerse yeniden başlar.
+    # "no" değil "unless-stopped": elle durdurursan durmuş kalır.
+    restart: unless-stopped
+    ports:
+      # 127.0.0.1'e bağlı: yalnızca bu makineden erişilir.
+      # Telefondan erişmek istersen "2340:2340" yap — ama önce Ayarlar'dan PIN kur.
+      # VADEO_PORT ile değiştirilebilir; geliştirme sunucun 2340'ı tutuyorsa işe yarar.
+      - "127.0.0.1:${VADEO_PORT:-2340}:2340"
+    volumes:
+      # Veritabanı burada yaşar. Container silinse de kalır.
+      # Yerel disk olmalı: SQLite'ın WAL kipi ağ dosya sisteminde (NFS/SMB) bozulur.
+      - ./data:/data
+    env_file:
+      # Telegram token'ı buraya; yoksa yok sayılır.
+      - path: .env
+        required: false

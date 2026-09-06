@@ -1,0 +1,9 @@
+.git
+node_modules
+public
+data
+docs
+*.png
+db.sqlite*
+*.sqlite*
+.env

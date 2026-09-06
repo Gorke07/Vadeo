@@ -5,6 +5,7 @@ public/
 # Veritabanı. Yoksa uygulama açılışta oluşturur; asla depoya girmemeli.
 # VADEO_DB ile başka bir ad verilse de yakalansın diye genel kalıp.
 db.sqlite*
+data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
