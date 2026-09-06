@@ -26,6 +26,22 @@ export const longDate = (iso = today()) =>
   new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${iso}T12:00:00`));
 export const trDate = (iso: string) => iso.slice(0, 10).split("-").reverse().join(".");
 
+/**
+ * "25.09.2026" -> "2026-09-25". Geçersizse null.
+ *
+ * <input type="date"> sayfanın diline değil tarayıcının arayüz diline göre biçimlenir;
+ * İngilizce arayüzde aa/gg/yyyy gösterip 05.09 ile 09.05'i karıştırıyordu. Girdi artık
+ * uygulamanın her yerde kullandığı gg.aa.yyyy biçiminde alınıp burada ISO'ya çevriliyor.
+ */
+export function parseTrDate(value: string): string | null {
+  const m = /^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/.exec(value.trim());
+  if (!m) return null;
+  const [, g, a, y] = m as unknown as [string, string, string, string];
+  const iso = `${y}-${a.padStart(2, "0")}-${g.padStart(2, "0")}`;
+  // 31.02.2026 gibi takvimde olmayan günler elensin: ISO'ya çevirip geri okuyoruz.
+  return new Date(`${iso}T00:00:00Z`).toISOString().slice(0, 10) === iso ? iso : null;
+}
+
 export const daysUntil = (due: string) =>
   Math.round((Date.parse(due + "T00:00:00Z") - Date.parse(today() + "T00:00:00Z")) / 86_400_000);
 

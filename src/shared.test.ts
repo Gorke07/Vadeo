@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { AppState } from "./backend/db";
-import { between, forecast, monthEnd, monthKey, monthPlan, nextMonthDate, paidByMonth, payoff, today, upcoming } from "./shared";
+import { between, forecast, monthEnd, monthKey, monthPlan, nextMonthDate, paidByMonth, parseTrDate, payoff, today, trDate, upcoming } from "./shared";
 
 const day = (n: number) => new Date(Date.parse(today()) + n * 86_400_000).toISOString().slice(0, 10);
 
@@ -156,4 +156,22 @@ test("aylık gerçekleşen: boş aylar eksende kalır", () => {
   expect(m.at(-1)!.key).toBe(now);
   expect(m.at(-1)!.total).toBe(500);      // aynı ayın ödemeleri toplanıyor
   expect(m.slice(0, 2).every((x) => x.total === 0)).toBe(true);
+});
+
+test("tarih girişi gg.aa.yyyy okunur, olmayan gün elenir", () => {
+  expect(parseTrDate("25.09.2026")).toBe("2026-09-25");
+  expect(parseTrDate("5.9.2026")).toBe("2026-09-05");      // tek haneli
+  expect(parseTrDate(" 01/03/2027 ")).toBe("2027-03-01");  // eğik çizgi ve boşluk
+  expect(parseTrDate("01-03-2027")).toBe("2027-03-01");    // tire
+  expect(parseTrDate("29.02.2028")).toBe("2028-02-29");    // artık yıl
+
+  expect(parseTrDate("31.02.2026")).toBeNull();            // şubatta 31 yok
+  expect(parseTrDate("31.04.2026")).toBeNull();            // nisanda 31 yok
+  expect(parseTrDate("29.02.2027")).toBeNull();            // artık yıl değil
+  expect(parseTrDate("2026-09-25")).toBeNull();            // ISO girilmiş
+  expect(parseTrDate("25.09.26")).toBeNull();              // iki haneli yıl
+  expect(parseTrDate("")).toBeNull();
+
+  // ekranda gösterilen biçim geri okunabilmeli
+  expect(parseTrDate(trDate("2026-11-10"))).toBe("2026-11-10");
 });

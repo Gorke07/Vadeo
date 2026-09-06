@@ -10,7 +10,7 @@ import { tooltip } from "@tanstack/charts/tooltip";
 import type { AppState, CreditCard, Loan, PersonalRecord, RecurringExpense } from "../backend/db";
 import {
   countdown, daysUntil, forecast, money, moneyExact, monthKey, monthLabel, monthPlan,
-  longDate, nextMonthDate, occurrences, paidByMonth, payoff, today, trDate, upcoming,
+  longDate, nextMonthDate, occurrences, paidByMonth, parseTrDate, payoff, today, trDate, upcoming,
   type Kind, type PlanRow, type Upcoming,
 } from "../shared";
 
@@ -232,6 +232,26 @@ function Entry(props: {
   );
 }
 
+/* Tarih girdileri gg.aa.yyyy alır. <input type="date"> tarayıcının arayüz diline
+   göre biçimlendiği için İngilizce arayüzde aa/gg/yyyy gösteriyordu. */
+const TARIH_ALANI = {
+  type: "text" as const,
+  inputMode: "numeric" as const,
+  placeholder: "gg.aa.yyyy",
+  maxLength: 10,
+  "data-date": "",
+};
+
+/** Yazarken noktaları kendisi koyar; silmeyi engellemez. */
+function bicimlendirTarih(e: React.FormEvent<HTMLInputElement>) {
+  const el = e.currentTarget;
+  if (el.dataset.date === undefined) return;
+  const rakam = el.value.replace(/\D/g, "").slice(0, 8);
+  if (el.value.endsWith(".") && rakam.length < 8) return; // elle silinen noktayı geri koyma
+  const parcalar = [rakam.slice(0, 2), rakam.slice(2, 4), rakam.slice(4, 8)].filter(Boolean);
+  el.value = parcalar.join(".");
+}
+
 interface Field {
   name: string;
   label: string;
@@ -263,8 +283,13 @@ function InlineForm({ fields, onSubmit, busy, submit, onInput }: {
               {f.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           ) : (
-            <input name={f.name} type={f.type ?? "text"} step={f.step} min={f.min} list={f.list}
-              autoFocus={i === 0} defaultValue={f.value ?? ""} />
+            f.type === "date" ? (
+              <input name={f.name} {...TARIH_ALANI} list={f.list} autoFocus={i === 0}
+                onInput={bicimlendirTarih} defaultValue={f.value ? trDate(String(f.value)) : ""} />
+            ) : (
+              <input name={f.name} type={f.type ?? "text"} step={f.step} min={f.min} list={f.list}
+                autoFocus={i === 0} defaultValue={f.value ?? ""} />
+            )
           )}
         </label>
       ))}
@@ -323,7 +348,18 @@ export default function App() {
   const submit = (url: string, method = "POST") => async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
-    if (await write(url, Object.fromEntries(new FormData(form)), method)) {
+    const alanlar = Object.fromEntries(new FormData(form)) as Record<string, FormDataEntryValue>;
+
+    // Tarihler ekranda gg.aa.yyyy; sunucuya ISO gider. Tek yerde çevriliyor.
+    for (const el of form.querySelectorAll<HTMLInputElement>("input[data-date]")) {
+      const ham = el.value.trim();
+      if (!ham) { alanlar[el.name] = ""; continue; }
+      const iso = parseTrDate(ham);
+      if (!iso) return setError(`Tarih gg.aa.yyyy olmalı: "${ham}"`), setNote("");
+      alanlar[el.name] = iso;
+    }
+
+    if (await write(url, alanlar, method)) {
       form.reset();
       form.closest("details")?.removeAttribute("open");
       setPanel(null);
@@ -546,7 +582,7 @@ export default function App() {
             </select>
           </label>
           <label>Tutar<input name="amount" type="number" step="0.01" min="0.01" required placeholder="1500" /></label>
-          <label>Vade<input name="due_date" type="date" /></label>
+          <label>Vade<input name="due_date" {...TARIH_ALANI} onInput={bicimlendirTarih} /></label>
           <button className="go" disabled={busy}>Kaydet</button>
         </form>
       </details>
@@ -624,7 +660,7 @@ export default function App() {
           <label>Kart<input name="name" list="oneri-kart" required maxLength={120} placeholder="Bonus" /></label>
           <label>Dönem borcu<input name="statement_amount" type="number" step="0.01" min="0" required placeholder="8400" /></label>
           <label>Asgari<input name="minimum_amount" type="number" step="0.01" min="0" required placeholder="1680" /></label>
-          <label>Son ödeme<input name="due_date" type="date" /></label>
+          <label>Son ödeme<input name="due_date" {...TARIH_ALANI} onInput={bicimlendirTarih} /></label>
           <button className="go" disabled={busy}>Kaydet</button>
         </form>
       </details>
@@ -678,7 +714,7 @@ export default function App() {
           <label>Taksit<input name="installment_amount" type="number" step="0.01" min="0.01" required placeholder="3250" /></label>
           <label>Toplam taksit<input name="total_installments" type="number" min="1" max="1000" required placeholder="12" /></label>
           <label>Ödenen<input name="paid_installments" type="number" min="0" defaultValue={0} /></label>
-          <label>Sıradaki vade<input name="next_due_date" type="date" /></label>
+          <label>Sıradaki vade<input name="next_due_date" {...TARIH_ALANI} onInput={bicimlendirTarih} /></label>
           <button className="go" disabled={busy}>Kaydet</button>
         </form>
       </details>
@@ -742,8 +778,8 @@ export default function App() {
         <form onSubmit={submit("/api/expenses")}>
           <label>Gider<input name="name" list="oneri-gider" required maxLength={120} placeholder="Kira" /></label>
           <label>Aylık tutar<input name="amount" type="number" step="0.01" min="0.01" required placeholder="24000" /></label>
-          <label>İlk ödeme<input name="next_due_date" type="date" required /></label>
-          <label>Sözleşme bitişi<input name="renews_on" type="date" /></label>
+          <label>İlk ödeme<input name="next_due_date" {...TARIH_ALANI} required onInput={bicimlendirTarih} /></label>
+          <label>Sözleşme bitişi<input name="renews_on" {...TARIH_ALANI} onInput={bicimlendirTarih} /></label>
           <button className="go" disabled={busy}>Kaydet</button>
         </form>
       </details>
