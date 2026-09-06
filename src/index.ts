@@ -1,17 +1,9 @@
 import { api, readState } from "./backend/routes";
 import { notify } from "./notify";
+import { buildFrontend } from "./build";
 
-const build = await Bun.build({
-  entrypoints: ["./src/frontend/index.tsx"],
-  outdir: "./public",
-  target: "browser",
-  sourcemap: "linked",
-  minify: process.env.NODE_ENV === "production",
-});
-if (!build.success) {
-  console.error(build.logs.join("\n"));
-  process.exit(1);
-}
+// İmaj kurulurken derlendiyse tekrar derleme: /app yazılabilir olmak zorunda kalmasın.
+if (!process.env.VADEO_PREBUILT) await buildFrontend();
 
 const server = Bun.serve({
   port: Number(process.env.PORT ?? 2340),

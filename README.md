@@ -51,6 +51,23 @@ istersen `compose.yml`'de `"2340:2340"` yap, **ama önce Ayarlar'dan PIN kur**.
 `./data` yerel diskte olmalı: SQLite'ın WAL kipi ağ dosya sisteminde (NFS/SMB)
 bozulur.
 
+### Unraid
+
+Hazır şablon: [`unraid/vadeo.xml`](unraid/vadeo.xml). Unraid'de
+`/boot/config/plugins/dockerMan/templates-user/` altına kopyala; Docker sekmesinde
+**Add Container → Template** listesinde çıkar. Elle de kurabilirsin, üç ayrıntı önemli:
+
+- **`--user 99:100`** (Extra Parameters). Unraid appdata dizinlerini `nobody:users`
+  sahipliğinde tutar. İmaj çalışma anında kendi dizinine yazmaz — frontend imaj
+  kurulurken derlenir — bu yüzden herhangi bir uid ile koşabilir.
+- **Veri yolu**: `/data` hedefine appdata dizinini bağla. appdata paylaşımın
+  cache havuzundaysa **doğrudan havuz yolunu ver** (`/mnt/cache/appdata/vadeo`),
+  `/mnt/user/...` değil: Mover açık bir SQLite dosyasını taşımasın ve FUSE
+  katmanı aradan çıksın.
+- **PIN kur.** Unraid'de container ağa açık olur; ilk açılışta
+  Ayarlar → Erişim'den PIN belirle. Ev ağının dışına açacaksan önüne TLS sonlandıran
+  bir ters vekil koy.
+
 ## Ortam değişkenleri
 
 Hiçbiri zorunlu değil. Proje kökündeki `.env` dosyasını Bun kendisi okur.
@@ -116,7 +133,8 @@ veriyi okumasını engeller; ancak aynı ağı dinleyen biri hem veriyi hem otur
 
 ```
 src/
-├── index.ts              Bun.build + Bun.serve; statik dosyalar ve saatlik bildirim
+├── index.ts              Bun.serve; statik dosyalar ve saatlik bildirim
+├── build.ts              Frontend derlemesi (geliştirmede açılışta, imajda kurulurken)
 ├── shared.ts             Tarih, para, projeksiyon ve aylık liste hesapları (iki taraf da kullanır)
 ├── notify.ts             Telegram: olay toplama, kuyruk, gönderim
 ├── backend/

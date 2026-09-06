@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Vadeo</Name>
+  <Repository>ghcr.io/gorke07/vadeo:latest</Repository>
+  <Registry>https://github.com/Gorke07/Vadeo/pkgs/container/vadeo</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Gorke07/Vadeo/issues</Support>
+  <Project>https://github.com/Gorke07/Vadeo</Project>
+  <Overview>
+    Borç, alacak, kredi kartı ekstresi, kredi taksiti ve sabit gider takibi.&#13;
+    &#13;
+    ÖNEMLİ: Ağdan erişilebilir olacağı için ilk açılışta Ayarlar -&gt; Erişim'den PIN kur.&#13;
+    Uygulama düz HTTP üzerinden çalışır; ev ağının dışına açacaksan önüne bir ters vekil (TLS) koy.&#13;
+    &#13;
+    Veri dizini SSD havuzunda olmalı. appdata paylaşımın "cache: only/prefer" ise
+    doğrudan havuz yolunu ver (ör. /mnt/cache/appdata/vadeo): Mover açık bir SQLite
+    dosyasını taşımasın ve FUSE katmanı aradan çıksın.
+  </Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:2340]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/Gorke07/Vadeo/main/src/frontend/assets/icon-192.png</Icon>
+  <!-- Unraid'in nobody:users kimliğiyle koşar; imaj çalışma anında /app'e yazmaz. -->
+  <ExtraParams>--user 99:100</ExtraParams>
+  <PostArgs/>
+  <DonateText/>
+  <DonateLink/>
+
+  <Config Name="WebUI Portu" Target="2340" Default="2340" Mode="tcp"
+          Description="Arayüzün dinlediği port." Type="Port" Display="always" Required="true" Mask="false">2340</Config>
+
+  <Config Name="Veri" Target="/data" Default="/mnt/user/appdata/vadeo" Mode="rw"
+          Description="Veritabanı burada tutulur. appdata cache havuzundaysa doğrudan havuz yolunu ver (ör. /mnt/cache/appdata/vadeo)."
+          Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/vadeo</Config>
+
+  <Config Name="Telegram Bot Token" Target="TELEGRAM_BOT_TOKEN" Default="" Mode=""
+          Description="İsteğe bağlı. Boş bırakılabilir; Ayarlar sayfasından da girilebilir."
+          Type="Variable" Display="advanced" Required="false" Mask="true"/>
+
+  <Config Name="Telegram Sohbet Kimliği" Target="TELEGRAM_CHAT_ID" Default="" Mode=""
+          Description="İsteğe bağlı. @userinfobot söyler."
+          Type="Variable" Display="advanced" Required="false" Mask="false"/>
+
+  <Config Name="Bildirim Saatleri" Target="VADEO_NOTIFY_HOURS" Default="9-22" Mode=""
+          Description="Bildirimin sessiz kalmadığı aralık."
+          Type="Variable" Display="advanced" Required="false" Mask="false">9-22</Config>
+</Container>
