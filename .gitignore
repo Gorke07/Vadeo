@@ -16,3 +16,4 @@ db.sqlite*
 .playwright-mcp/
 *.png
 !src/frontend/assets/*.png
+!docs/*.png
