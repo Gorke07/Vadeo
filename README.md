@@ -1,5 +1,7 @@
 # Vadeo
 
+[![CI](https://github.com/Gorke07/Vadeo/actions/workflows/ci.yml/badge.svg)](https://github.com/Gorke07/Vadeo/actions/workflows/ci.yml)
+
 Borç, alacak, kredi kartı ekstresi, kredi taksiti ve sabit gider takibi.
 Tek soruyu cevaplamak için yazıldı: **ne zaman, ne kadar ödemem gerekiyor?**
 
@@ -28,6 +30,14 @@ Sürekli ayakta kalması için:
 
 ```sh
 docker compose up -d          # http://localhost:2340
+```
+
+Kaynağı klonlamadan çalıştırmak istersen hazır imaj var (amd64 + arm64):
+
+```sh
+docker run -d --name vadeo --restart unless-stopped \
+  -p 127.0.0.1:2340:2340 -v ./data:/data \
+  ghcr.io/gorke07/vadeo:latest
 ```
 
 Makine açıldığında kendiliğinden gelir, çökerse yeniden başlar. Veritabanı
@@ -126,6 +136,10 @@ src/
 ```sh
 bun test        # 36 test
 ```
+
+CI her push'ta testleri İstanbul saat diliminde çalıştırır (tarih hesapları yerele
+bağlı), geçerse imajı `ghcr.io/gorke07/vadeo` altına basar. Testler geçmeden imaj
+yayınlanmaz.
 
 Testler para ve tarih yollarını kovalar: kısmi ödemenin kalanı aşamaması, geri
 almanın kırpılmış asgariyi geri getirmesi, sözleşme bitince projeksiyonun durması,
